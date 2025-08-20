@@ -567,7 +567,19 @@ class SetupOrchestrator:
     
     def __init__(self):
         self.platform = PlatformDetector.detect_platform()
-        self.project_root = Path(__file__).parent.parent
+        # Handle both script and notebook execution contexts
+        try:
+            self.project_root = Path(__file__).parent.parent
+        except NameError:
+            # When executed from notebook via exec()
+            if self.platform == 'workspace':
+                self.project_root = Path('/workspace/SD-DarkMaster-Pro')
+            elif self.platform == 'colab':
+                self.project_root = Path('/content/SD-DarkMaster-Pro')
+            elif self.platform == 'kaggle':
+                self.project_root = Path('/kaggle/working/SD-DarkMaster-Pro')
+            else:
+                self.project_root = Path.cwd()
         self.dependency_manager = DependencyManager(self.platform)
         self.storage_manager = UnifiedStorageManager(self.project_root)
         self.extension_manager = ExtensionManager(self.project_root)
@@ -632,7 +644,18 @@ def main():
     if sys.platform == 'win32':
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     
-    asyncio.run(orchestrator.run_setup())
+    # Handle both normal execution and notebook context
+    try:
+        asyncio.run(orchestrator.run_setup())
+    except RuntimeError as e:
+        if "cannot be called from a running event loop" in str(e):
+            # Already in an event loop (e.g., Jupyter notebook)
+            import nest_asyncio
+            nest_asyncio.apply()
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(orchestrator.run_setup())
+        else:
+            raise
 
 if __name__ == "__main__":
     main()

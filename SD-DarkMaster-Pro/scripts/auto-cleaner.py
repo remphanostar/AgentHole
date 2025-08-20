@@ -16,7 +16,11 @@ from datetime import datetime, timedelta
 import logging
 
 # Add project root to path
-project_root = Path(__file__).parent.parent
+try:
+    project_root = Path(__file__).parent.parent
+except NameError:
+    # When executed from notebook
+    project_root = Path('/workspace/SD-DarkMaster-Pro')
 sys.path.insert(0, str(project_root))
 
 # Import modules
